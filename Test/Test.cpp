@@ -11,6 +11,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	try{
 		CWinDB db;
 		db.Reset();
+
+		db.NewTable();
 		
 	} catch(CWinDBErrExp& e){
 		_tprintf(e);

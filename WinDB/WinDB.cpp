@@ -13,10 +13,17 @@
 //	class CWinDB
 //
 //////////////////////////////////////////////////////////////////////////
-WINDB_API CWinDB::CWinDB(void)
+WINDB_API CWinDB::CWinDB(LPCTSTR lpszDB/* = NULL*/):
+	m_inst(lpszDB)
 {
 	Reset(true);
-	JetInit(m_inst);
+	JET_ERR err = JetInit(m_inst);
+	if (err != JET_errSuccess){
+		throw CWinDBErrExp(err);
+	}
+
+	m_lpSes = m_inst.NewSession();
+
 }
 
 WINDB_API CWinDB::~CWinDB( void )
@@ -33,4 +40,30 @@ bool CWinDB::Reset( bool bFirstTime /*= false*/ )
 	}
 
 	return bRet;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//
+//	CWinDBSession
+//
+//////////////////////////////////////////////////////////////////////////
+CWinDBSession* CWinDBInst::NewSession( LPCTSTR lpszUser /*= nullptr*/, LPCTSTR lpszPwd /*= nullptr*/ )
+{
+	CWinDBSession* lpSes = new CWinDBSession;
+	JET_ERR err = JetBeginSession(m_inst, *lpSes, lpszUser, lpszPwd);
+	if (JET_errSuccess != err)	throw CWinDBErrExp(err);
+	return lpSes;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+//
+//	CWinDBDatabase
+//
+//////////////////////////////////////////////////////////////////////////
+CWinDBDatabase* CWinDBSession::NewDatabase( LPCTSTR lpszDBName /*= NULL*/ )
+{
+	CWinDBDatabase* m_lpDb = new CWinDBDatabase(*this);
+	//JetCreateDatabase(m_ses, lpszDBName, )
+	return m_lpDb;
 }

@@ -39,21 +39,27 @@ typedef enum _WinDBErrCode {
 } WinDBErrCode;
 LPCTSTR g_winDBErrs[] = {
 	ERRSTR(Ok),
+	ERRSTR(Unk),
 	ERRSTR(Limit)
 };
 
 
-#define EXPCODE(x) err##x
+#define EXPCODE(x) exp##x
 #define EXPSTR(x) _T("exp")##C2S(x)
 
 typedef enum _WinDBExpCode {
 	expOk = ERRCODE(Limit),
-	expLimit
+	EXPCODE(Unk),
+	EXPCODE(InitWinDB),
+	EXPCODE(Limit)
 } WinDBExpCod;
 LPCTSTR g_winDBExps[] = {
 	EXPSTR(Ok),
+	EXPSTR(Unk),
+	EXPSTR(InitWinDB),
 	EXPSTR(Limit)
 };
+
 
 class WINDB_API CWinDBErrExp {
 public:
@@ -75,25 +81,52 @@ public:
 	operator LPCTSTR(){
 		if (JET_errSuccess != m_jerr)
 		{
-			
+			static LPCTSTR lpszNull = L"";
+			return lpszNull;
 		}
 		return m_cod < ERRCODE(Limit) ? g_winDBErrs[m_cod] : 
 			(m_cod < EXPCODE(Limit) ? g_winDBExps[m_cod] : NULL);
 	}
 
-	virtual ~CWinDBErrExp() {
-		;
-	}
+	operator JET_ERR() { return m_jerr;	}
+
+	virtual ~CWinDBErrExp() { Reset();}
 
 private:
 	void Reset() {
 		m_jerr = 0;
 		m_cod = 0;
 	}
+
 	JET_ERR m_jerr;
 	UINT m_cod;
 };
 
+class CWinDBDatabase;
+class CWinDB;
+class CWinDBErrExp;
+class CWinDBInst;
+
+
+class WINDB_API CWinDBSession {
+public:
+	CWinDBSession():
+		m_ses(0) {
+
+	}
+	~CWinDBSession(){ 
+		if (0 != m_ses) JetEndSession(m_ses, 0); 
+	}
+
+
+	operator JET_SESID&() { return m_ses; }
+	operator JET_SESID*() { return &m_ses; }
+
+	CWinDBDatabase* NewDatabase(LPCTSTR lpszDBName = NULL);
+
+private:
+	JET_SESID m_ses;
+};
 
 
 class WINDB_API CWinDBInst {
@@ -101,14 +134,18 @@ public:
 	CWinDBInst(LPCTSTR lpszName = NULL) throw (...) {
 		JET_ERR err = JetCreateInstance(&m_inst, lpszName);
 		if (err != JET_errSuccess){
-			//throw
-		}
+			throw CWinDBErrExp(err);
+		}		
 	}
 
-	~CWinDBInst(){}
+	~CWinDBInst(){
+		if (0 != m_inst) JetTerm(m_inst);
+	}
 
 	operator JET_INSTANCE*() { return &m_inst; }
 	operator JET_INSTANCE&() { return m_inst; }
+		
+	CWinDBSession* NewSession(LPCTSTR lpszUser = nullptr, LPCTSTR lpszPwd = nullptr);
 
 private:
 	JET_INSTANCE m_inst;
@@ -116,10 +153,51 @@ private:
 };
 
 
+class CWinDBDatabase
+{
+public:
+	CWinDBDatabase(CWinDBSession& ses)
+		:m_dbId(0), 
+		m_ses(ses){
+	}
+
+	~CWinDBDatabase(){
+
+	}
+
+protected:
+private:
+	CWinDBSession& m_ses;
+	JET_DBID m_dbId;
+};
+
+class CWinDBTabl
+{
+public:
+	CWinDBTabl(){}
+	~CWinDBTabl(){
+		//if (0 == m_dbId) JetCloseTable()
+	}
+
+	void DeleteSelf(){
+		//JetCreateTable
+	}
+protected:
+private:
+	
+};
+
+class CWinDBTabl
+{
+public:
+protected:
+private:
+};
+
 
 class WINDB_API CWinDB {
 public:
-	CWinDB(void);
+	CWinDB(LPCTSTR lpszDB = NULL);
 	virtual ~CWinDB(void);
 
 	//
@@ -127,11 +205,33 @@ public:
 	//
 	bool Reset(bool bFirstTime = false);
 	
-//	bool Conn(){};
-//	void Disconn(){};
+	CWinDBInst* NewInstance(LPCTSTR lpszInst = NULL){
+		return new CWinDBInst(lpszInst);
+	}
+
+	CWinDBTabl* NewTable(){
+		return NULL;
+	}
+
+	void DelTable(CWinDBTabl* lpTabl){
+		if (NULL != lpTabl) {
+			
+			delete lpTabl;
+		}
+	}
+
 private:
 	CWinDBInst m_inst;
+	CWinDBSession* m_lpSes;	
 };
 
 extern WINDB_API int nWinDB;
 
+
+class CWinDBQuickTabl{
+public:
+	 CWinDBTabl* Open();
+	 void Close(CWinDBTabl*);
+	 CWinDBTabl* New();
+	 void Del(CWinDBTabl*);
+};
