@@ -9,11 +9,12 @@
 int _tmain(int argc, _TCHAR* argv[])
 {
 	try{
-		CWinDB db;
-		db.Reset();
+// 		CWinDB db;
+// 		db.Reset();
+// 
+// 		db.NewTable();
 
-		db.NewTable();
-		
+		CWinDBUtil::Inst().TablNew();
 	} catch(CWinDBErrExp& e){
 		_tprintf(e);
 	}

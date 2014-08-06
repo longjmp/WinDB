@@ -106,26 +106,27 @@ class CWinDBDatabase;
 class CWinDB;
 class CWinDBErrExp;
 class CWinDBInst;
-
+class CWinDBCol;
+class CWinDBRow;
+class CWinDBUtil;
 
 class WINDB_API CWinDBSession {
 public:
-	CWinDBSession():
-		m_ses(0) {
+	CWinDBSession(): m_sess(0) {
 
 	}
 	~CWinDBSession(){ 
-		if (0 != m_ses) JetEndSession(m_ses, 0); 
+		if (0 != m_sess) JetEndSession(m_sess, 0); 
 	}
 
 
-	operator JET_SESID&() { return m_ses; }
-	operator JET_SESID*() { return &m_ses; }
+	operator JET_SESID&() { return m_sess; }
+	operator JET_SESID*() { return &m_sess; }
 
 	CWinDBDatabase* NewDatabase(LPCTSTR lpszDBName = NULL);
 
 private:
-	JET_SESID m_ses;
+	JET_SESID m_sess;
 };
 
 
@@ -153,7 +154,7 @@ private:
 };
 
 
-class CWinDBDatabase
+class WINDB_API CWinDBDatabase
 {
 public:
 	CWinDBDatabase(CWinDBSession& ses)
@@ -171,10 +172,12 @@ private:
 	JET_DBID m_dbId;
 };
 
-class CWinDBTabl
+class WINDB_API CWinDBTabl
 {
 public:
-	CWinDBTabl(){}
+	CWinDBTabl(CWinDBSession& sess): m_sess(sess){
+	}
+
 	~CWinDBTabl(){
 		//if (0 == m_dbId) JetCloseTable()
 	}
@@ -182,18 +185,39 @@ public:
 	void DeleteSelf(){
 		//JetCreateTable
 	}
+
 protected:
 private:
-	
+	CWinDBSession& m_sess;
 };
 
-class CWinDBTabl
-{
+
+class WINDB_API CWinDBCol{
 public:
-protected:
+	CWinDBCol(){
+	}
+	 
+	~CWinDBCol(){}
+
+	operator CONST JET_COLUMNID(){
+		return m_colId;
+	}
+
 private:
+	JET_COLUMNID m_colId;
 };
 
+
+class WINDB_API CWinDBRow{
+public:
+	CWinDBRow(){
+	}
+
+	~CWinDBRow(){
+	}
+
+private:
+};
 
 class WINDB_API CWinDB {
 public:
@@ -206,18 +230,7 @@ public:
 	bool Reset(bool bFirstTime = false);
 	
 	CWinDBInst* NewInstance(LPCTSTR lpszInst = NULL){
-		return new CWinDBInst(lpszInst);
-	}
-
-	CWinDBTabl* NewTable(){
-		return NULL;
-	}
-
-	void DelTable(CWinDBTabl* lpTabl){
-		if (NULL != lpTabl) {
-			
-			delete lpTabl;
-		}
+		return new CWinDBInst(lpszInst); 
 	}
 
 private:
@@ -225,13 +238,34 @@ private:
 	CWinDBSession* m_lpSes;	
 };
 
-extern WINDB_API int nWinDB;
 
 
-class CWinDBQuickTabl{
+class CWinDBUtil{
 public:
-	 CWinDBTabl* Open();
-	 void Close(CWinDBTabl*);
-	 CWinDBTabl* New();
-	 void Del(CWinDBTabl*);
+	CWinDBUtil& Inst(){
+		static CWinDBUtil inst;
+		return inst;		 
+	}
+	~CWinDBUtil(){}
+	
+	CWinDBTabl* TablOpen(){}
+	void TablClose(CWinDBTabl*){}
+	CWinDBTabl* TablNew(LPCTSTR lpszName, UINT uCols, LPCTSTR lpszColName[], LPCTSTR lpsz[]){
+		return nullptr;
+	}
+	void TablDel(CWinDBTabl* lpTabl){
+		if (NULL != lpTabl) {
+
+			delete lpTabl;
+			lpTabl = nullptr;
+		}
+	}
+	
+	void DBBackup(LPCTSTR szPath){}
+	void DBRestore(){}
+
+private:
+	explicit CWinDBUtil(){}
 };
+
+extern WINDB_API int nWinDB;
