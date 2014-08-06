@@ -19,11 +19,10 @@ WINDB_API CWinDB::CWinDB(LPCTSTR lpszDB/* = NULL*/):
 	Reset(true);
 	JET_ERR err = JetInit(m_inst);
 	if (err != JET_errSuccess){
-		throw CWinDBErrExp(err);
+		throw CWinDBErr(err);
 	}
 
 	m_lpSes = m_inst.NewSession();
-
 }
 
 WINDB_API CWinDB::~CWinDB( void )
@@ -51,7 +50,7 @@ CWinDBSession* CWinDBInst::NewSession( LPCTSTR lpszUser /*= nullptr*/, LPCTSTR l
 {
 	CWinDBSession* lpSes = new CWinDBSession;
 	JET_ERR err = JetBeginSession(m_inst, *lpSes, lpszUser, lpszPwd);
-	if (JET_errSuccess != err)	throw CWinDBErrExp(err);
+	if (JET_errSuccess != err)	throw CWinDBErr(err);
 	return lpSes;
 }
 

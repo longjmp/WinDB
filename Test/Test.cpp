@@ -9,12 +9,14 @@
 int _tmain(int argc, _TCHAR* argv[])
 {
 	try{
-		CWinDB db;
-		db.Reset();
 
-		db.NewTable();
-		
-	} catch(CWinDBErrExp& e){
+		auto lpTable = CWinDBUtil::Inst().NewTable(
+			L"Users", 4, 
+			{ L"ID", L"Name", L"Sex", L"Age" },
+			{ WinDBColType::typeInt, WinDBColType::typeStr, WinDBColType::typeInt, WinDBColType::typeInt }
+		);
+
+	} catch(CWinDBErr& e){
 		_tprintf(e);
 	}
 
