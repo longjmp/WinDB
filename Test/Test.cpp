@@ -11,9 +11,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	try{
 
 		auto lpTable = CWinDBUtil::Inst().NewTable(
-			L"Users", 4, 
-			{ L"ID", L"Name", L"Sex", L"Age" },
-			{ WinDBColType::typeInt, WinDBColType::typeStr, WinDBColType::typeInt, WinDBColType::typeInt }
+			L"Users",
+			{
+				{ L"ID",	WinDBColType::typeInt },
+				{ L"Name",	WinDBColType::typeStr },
+				{ L"Sex",	WinDBColType::typeInt },
+				{ L"Age",	WinDBColType::typeInt }
+			}
 		);
 
 	} catch(CWinDBErr& e){

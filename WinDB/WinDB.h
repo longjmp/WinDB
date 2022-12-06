@@ -37,6 +37,13 @@
 	#include <memory>
 #endif // _VECTOR_
 
+
+#include <tuple>
+#include <cstring>
+#include <shellapi.h>
+#include <sal.h>
+
+
 #define C2S(x) _T(#x)
 
 #define ERR_DEFINE(x)	err##x
@@ -125,6 +132,7 @@ class CWinDBInst;
 class CWinDBCol;
 class CWinDBRow;
 class CWinDBUtil;
+class CWinDBTabl;
 
 class WINDB_API CWinDBSession 
 {
@@ -171,6 +179,73 @@ private:
 	LPCTSTR lpsz{ nullptr };
 };
 
+class WINDB_API CWinDBTabl
+{
+public:
+	CWinDBTabl(JET_TABLEID id) {
+	}
+
+	~CWinDBTabl() {
+		//if (0 == m_dbId) JetCloseTable()
+	}
+
+	void DeleteSelf() {
+		//JetCreateTable
+	}
+
+	operator auto () {
+		return m_tablId;
+	}
+
+protected:
+private:
+	JET_TABLEID m_tablId;
+};
+
+
+
+typedef enum _WinDBColType {
+	typeNull = 0,
+	typeInt,
+	typeStr,
+	typeLimit
+} WinDBColType;
+
+typedef struct _ColDefine {
+	LPCTSTR lpszName;		// names of the column
+	WinDBColType colType;	// data type of the column
+} ColDefine;
+
+using ColDefList = std::initializer_list<ColDefine>;
+
+class WINDB_API CWinDBCol {
+public:
+	CWinDBCol() {
+	}
+
+	~CWinDBCol() {}
+
+
+
+	operator CONST JET_COLUMNID() {
+		return m_colId;
+	}
+
+private:
+	JET_COLUMNID m_colId;
+};
+
+
+class WINDB_API CWinDBRow {
+public:
+	CWinDBRow() {
+	}
+
+	~CWinDBRow() {
+	}
+
+private:
+};
 
 class WINDB_API CWinDBDatabase
 {
@@ -184,11 +259,17 @@ public:
 
 	}
 
-	CWinDBTabl* CreateTable(LPCTSTR lpszName) 
+	CWinDBTabl* CreateTable(LPCTSTR lpszName, ColDefList colDef)
 	{
 		ASSERT(lpszName);
-		JetCreateTable(m_ss, );
-		return nullptr;
+				
+		JET_TABLEID tablId = 0;
+		JetCreateTable(m_ss, this[0], lpszName, 0, 0, &tablId);
+		return new CWinDBTabl(tablId);
+	}
+
+	operator JET_DBID() {
+		return m_dbId;
 	}
 
 protected:
@@ -197,75 +278,15 @@ private:
 	JET_DBID m_dbId;
 };
 
-class WINDB_API CWinDBTabl
-{
-public:
-	CWinDBTabl(CWinDBSession& sess): m_sess(sess){
-	}
-
-	~CWinDBTabl(){
-		//if (0 == m_dbId) JetCloseTable()
-	}
-
-	void DeleteSelf(){
-		//JetCreateTable
-	}
-
-protected:
-private:
-	CWinDBSession& m_sess;
-};
 
 
-typedef enum _WinDBColType {
-	typeNull = 0,
-	typeInt,
-	typeStr,
-	typeLimit
-} WinDBColType;
-
-typedef struct _ColDefine {
-	LPCTSTR lpszName;
-	WinDBColType colType;
-} ColDefine;
-
-typedef struct _ColDefine {
-	UINT uCnt;
-	ColDefine cols;
-} ColDefine;
-
-class WINDB_API CWinDBCol{
-public:
-	CWinDBCol(){
-	}
-	 
-	~CWinDBCol(){}
-
-
-
-	operator CONST JET_COLUMNID(){
-		return m_colId;
-	}
-
-private:
-	JET_COLUMNID m_colId;
-};
-
-
-class WINDB_API CWinDBRow{
-public:
-	CWinDBRow(){
-	}
-
-	~CWinDBRow(){
-	}
-
-private:
-};
 
 class WINDB_API CWinDB
 {
 public:
+	using DbInst = std::shared_ptr<CWinDBInst>;
+	using DbInstVec = std::vector<DbInst>;
+	
 	CWinDB(LPCTSTR lpszDB = NULL);
 	virtual ~CWinDB(void);
 
@@ -274,25 +295,31 @@ public:
 	//
 	bool Reset(bool bFirstTime = false);
 	
+	CWinDBDatabase* PrepareDB() {
+		return ReadyInst()->NewSession()->NewDatabase();
+	}
 
-	CWinDBInst* NewInstance(LPCTSTR lpszInst = NULL){
-		return new CWinDBInst(lpszInst); 
+	DbInst& ReadyInst()
+	{
+		if (m_insts.size() == 0)
+		{
+			m_insts.push_back(NewInstance());
+		}
+
+		return m_insts[0];
+	}
+
+	DbInst&& NewInstance(LPCTSTR lpszInst = NULL){
+		return std::move(std::make_shared<CWinDBInst>(CWinDBInst(lpszInst)));
 	}
 
 private:
-	using DbInst = std::shared_ptr<CWinDBInst>;
-	using DbInstVec = std::vector<DbInst>;
-
 	DbInstVec m_insts;
 
 	CWinDBInst m_inst;
 	CWinDBSession* m_lpSes;	
 };
 
-
-#include <tuple>
-#include <Shlwapi.h>
-#include <sal.h>
 
 /*
 * 
@@ -326,10 +353,11 @@ public:
 	void TablClose(CWinDBTabl*){}
 	
 
+
 	/*
 	* 
 	* Function:
-	*	CWinDBTabl* NewTable(LPCTSTR lpszName, UINT uCols, LPCTSTR lpszColName[], WinDBColType colType[])	
+	*	CWinDBTabl* NewTable(LPCTSTR lpszName, ColDefList colDef)	
 	* 
 	* Purpose: Create a table.	
 	* 
@@ -343,42 +371,43 @@ public:
 	*							  also creates Session("MySess") and DB("BizDB");
 	*		"BizDb.Users": Creates Table("Users") in default_instance.default_session.BizDb, 
 	*					   also creates database("BizDB") in default_instance.default_session.
-	*	UINT uCols: count of the columns
-	*	LPCTSTR lpszColName[]: names of the columns,  
+	*	ColDefList colDef: table columns define
 	* 
 	* 
 	*/	
-	CWinDBTabl* NewTable(LPCTSTR lpszName, 
-		UINT uCols, 
-		_In_Reads(uCols) LPCTSTR lpszColName[],
-		_In_Reads(uCols) WinDBColType colType[])
+	CWinDBTabl* NewTable(LPCTSTR lpszName, ColDefList colDef)
 	{
-		CWinDBDatabase rDB = ReadyDB(lpszName);
-		auto n = uCols;
-		for (; n < 199; ++n)
-			StrDup(lpszColName[n]);
-		return nullptr;
+		CWinDBDatabase* lpDB = PrepareDB(lpszName);
+		ASSERT(lpDB);
+
+
+		if (colDef.size() > 511)
+			return nullptr;
+
+		return lpDB->CreateTable(lpszName, colDef);
 	}
 
-	CWinDBTabl* NewTable(LPCTSTR lpszName, ColsDefine colsDefine)
+	
+
+	CWinDBDatabase* PrepareDB(LPCTSTR lpszName)
 	{
-		CWinDBDatabase* lpDb = ReadyDB(lpszName);
-		ASSERT(nullptr != lpDb);
+		if (nullptr == lpszName || nullptr == std::wcschr(lpszName, L'.'))
+		{
+			if (m_vecDB.size() == 0)
+			{
+				m_vecDB.push_back(new CWinDB);				
+			}
+			
+			if (m_vecDB.back())
+				return m_vecDB.back()->PrepareDB();
+		}
+		else
+		{
+			// handle forms like "xx.xx.xx.xx", not yet implemented
+			//int i = StrChr(lpszName, L".");
+		}
 		
 		return nullptr;
-	}
-
-	CWinDBDatabase* ReadyDB(LPCTSTR lpszName)
-	{
-		int i = StrCSpn(lpszName, L".");
-
-		if (m_vecDB.size() == 0)
-		{
-			m_vecDB.push_back(new CWinDB);
-			m_vecDB[0]->NewInstance();
-		}
-
-		return ;
 	}
 
 	void TablDel(CWinDBTabl* lpTabl){
