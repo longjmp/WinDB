@@ -3,66 +3,68 @@
 
 #include "stdafx.h"
 #include "WinDB.h"
-
-
-
-
+#include "WinDBInst.h"
+#include "WinDBDatabase.h"
+#include "WinDBSession.h"
 
 //////////////////////////////////////////////////////////////////////////
 //
 //	class CWinDB
 //
 //////////////////////////////////////////////////////////////////////////
-WINDB_API CWinDB::CWinDB(LPCTSTR lpszDB/* = NULL*/):
-	m_inst(lpszDB)
+CWinDB::CWinDB()
 {
 	Reset(true);
-	JET_ERR err = JetInit( m_inst);
-	if (err != JET_errSuccess){
-		throw CWinDBErr(err);
-	}
-
-	m_lpSes = m_inst.NewSession();
 }
 
-WINDB_API CWinDB::~CWinDB( void )
+CWinDB::~CWinDB(void)
 {
 	Reset(false);
 }
 
-bool CWinDB::Reset( bool bFirstTime /*= false*/ )
+CWinDBDatabase* CWinDB::PrepareDB(std::wstring& strInst, std::wstring& strSess, std::wstring& strDb)
+//LPCTSTR lpszInst, LPCTSTR lpszSess, LPCTSTR lpszDB)
+{
+	auto itInst = PrepareInst(strInst.c_str());
+	auto itSess = itInst->PrepareSession(strSess.c_str());
+
+	return itSess->NewDatabase();
+}
+
+DbInst CWinDB::PrepareInst(LPCTSTR lpszInst) {
+	auto it = m_insts.find(lpszInst);
+	if (it == m_insts.end())
+	{
+		DbInsts::value_type item(
+			lpszInst, 
+			std::move(
+				std::make_shared<CWinDBInst>(lpszInst)
+			)
+		);
+
+		JET_ERR err = JetInit(*item.second);
+		if (err != JET_errSuccess)
+		{
+			throw CWinDBErr(err);
+		}
+
+		m_insts.insert(item);
+	}
+
+	return m_insts[lpszInst];
+}
+
+bool CWinDB::Reset(bool bFirstTime /*= false*/)
 {
 	bool bRet = false;
-	if (! bFirstTime)
+	if (!bFirstTime)
 	{
-		m_inst = NULL;
+		//m_insts.
 	}
 
 	return bRet;
 }
 
-//////////////////////////////////////////////////////////////////////////
-//
-//	CWinDBSession
-//
-//////////////////////////////////////////////////////////////////////////
-CWinDBSession* CWinDBInst::NewSession( LPCTSTR lpszUser /*= nullptr*/, LPCTSTR lpszPwd /*= nullptr*/ )
-{
-	CWinDBSession* lpSes = new CWinDBSession;
-	JET_ERR err = JetBeginSession(m_inst, *lpSes, lpszUser, lpszPwd);
-	if (JET_errSuccess != err)	throw CWinDBErr(err);
-	return lpSes;
-}
 
 
-//////////////////////////////////////////////////////////////////////////
-//
-//	CWinDBDatabase
-//
-//////////////////////////////////////////////////////////////////////////
-CWinDBDatabase* CWinDBSession::NewDatabase( LPCTSTR lpszDBName /*= NULL*/ )
-{
-	CWinDBDatabase* m_lpDb = new CWinDBDatabase(*this);
-	//JetCreateDatabase(m_ses, lpszDBName, )
-	return m_lpDb;
-}
+
