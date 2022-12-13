@@ -72,6 +72,7 @@ typedef struct _ColDefine {
 using ColDefList = std::initializer_list<ColDefine>;
 
 
+
 class WINDB_API CWinDBTabl
 {
 public:
@@ -108,7 +109,7 @@ public:
 	CWinDBRow() {
 	}
 
-	virtual ~CWinDBRow() override{
+	virtual ~CWinDBRow() {
 	}
 
 private:
