@@ -82,11 +82,17 @@ public:
 		//if (0 == m_dbId) JetCloseTable()
 	}
 
-	void DeleteSelf() {
+	void Add() {}
+
+	void Remove() {
 		//JetCreateTable
 	}
 
-	operator auto () {
+	constexpr operator auto () const {
+		return m_tablId;
+	}
+
+	operator auto& () {
 		return m_tablId;
 	}
 
@@ -102,7 +108,7 @@ public:
 	CWinDBRow() {
 	}
 
-	~CWinDBRow() {
+	virtual ~CWinDBRow() override{
 	}
 
 private:

@@ -10,7 +10,7 @@ int _tmain(int argc, _TCHAR* argv[])
 {
 	try{
 
-		auto lpTable = CWinDBUtil::Inst().NewTable(
+		auto lpTabl = CWinDBUtil::Inst().NewTable(
 			L"Users",
 			{
 				{ L"ID",	WinDBColType::typeInt },
@@ -19,6 +19,7 @@ int _tmain(int argc, _TCHAR* argv[])
 				{ L"Age",	WinDBColType::typeInt }
 			}
 		);
+		lpTabl->Remove();
 
 	} catch(CWinDBErr& e){
 		_tprintf(e);
